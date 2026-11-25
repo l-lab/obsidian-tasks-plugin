@@ -222,6 +222,117 @@ export class ProjectConfigManager {
 	}
 
 	/**
+	 * Parse a "key=value" rule (e.g. "Class=Project"). Without "=", any
+	 * non-empty value of the key matches.
+	 */
+	private parsePropertyRule(
+		rule: string,
+	): { key: string; value?: string } | null {
+		if (!rule) return null;
+		const eq = rule.indexOf("=");
+		const key = (eq === -1 ? rule : rule.slice(0, eq)).trim();
+		if (!key) return null;
+		const value = eq === -1 ? undefined : rule.slice(eq + 1).trim();
+		return { key, value: value || undefined };
+	}
+
+	/**
+	 * Check a frontmatter object against a parsed property rule.
+	 * Key and value are compared case-insensitively; list values match if
+	 * any item matches; wiki-link values like "[[Project]]" are unwrapped.
+	 */
+	private frontmatterMatchesRule(
+		frontmatter: Record<string, any> | undefined | null,
+		rule: { key: string; value?: string },
+	): boolean {
+		if (!frontmatter) return false;
+		const wantedKey = rule.key.toLowerCase();
+		const actualKey = Object.keys(frontmatter).find(
+			(k) => k.toLowerCase() === wantedKey,
+		);
+		if (actualKey === undefined) return false;
+		const raw = frontmatter[actualKey];
+		const values = (Array.isArray(raw) ? raw : [raw])
+			.filter((v) => v !== null && v !== undefined)
+			.map((v) =>
+				String(v)
+					.trim()
+					.replace(/^\[\[(.*?)(\|.*)?\]\]$/, "$1")
+					.trim()
+					.toLowerCase(),
+			)
+			.filter((v) => v !== "");
+		if (values.length === 0) return false;
+		if (rule.value === undefined) return true;
+		const wanted = rule.value.toLowerCase();
+		return values.some((v) => v === wanted);
+	}
+
+	private getFrontmatter(path: string): Record<string, any> | undefined {
+		const file = this.vault.getFileByPath(path);
+		if (!file || !(file instanceof TFile)) return undefined;
+		return this.metadataCache.getFileCache(file)?.frontmatter;
+	}
+
+	/**
+	 * Find the project for a file from folder notes whose frontmatter matches
+	 * the rule. The note itself is checked first (a matching note is its own
+	 * project, named after the note), then each parent folder from the closest
+	 * up. A folder counts as a project when its folder note matches, either
+	 * inside it ("A/B/B.md") or next to it ("A/B.md"). The project is named
+	 * after the folder.
+	 */
+	findFrontmatterPropertyProject(
+		filePath: string,
+		ruleText: string,
+	): TgProject | undefined {
+		const rule = this.parsePropertyRule(ruleText);
+		if (!rule) return undefined;
+
+		const normalized = this.normalizeProjectPath(filePath);
+		const parts = normalized.split("/");
+		const fileName = parts[parts.length - 1] || "";
+		const source = `${rule.key}=${rule.value ?? "*"}`;
+
+		if (this.frontmatterMatchesRule(this.getFrontmatter(normalized), rule)) {
+			return {
+				type: "metadata",
+				name: fileName.replace(/\.md$/i, ""),
+				source,
+				readonly: true,
+			};
+		}
+
+		const folders = parts.slice(0, -1);
+		for (let i = folders.length; i >= 1; i--) {
+			const folderName = folders[i - 1];
+			const folderPath = folders.slice(0, i).join("/");
+			const parentPath = folders.slice(0, i - 1).join("/");
+			const candidates = [
+				`${folderPath}/${folderName}.md`,
+				parentPath ? `${parentPath}/${folderName}.md` : `${folderName}.md`,
+			];
+			for (const candidate of candidates) {
+				if (candidate === normalized) continue;
+				if (
+					this.frontmatterMatchesRule(
+						this.getFrontmatter(candidate),
+						rule,
+					)
+				) {
+					return {
+						type: "metadata",
+						name: folderName,
+						source,
+						readonly: true,
+					};
+				}
+			}
+		}
+		return undefined;
+	}
+
+	/**
 	 * Normalize a project path to use consistent separators
 	 * @param path The path to normalize
 	 * @returns Normalized path with forward slashes
@@ -292,6 +403,15 @@ export class ProjectConfigManager {
 					if (!method.enabled) continue;
 
 					switch (method.type) {
+						case "frontmatterProperty": {
+							const project =
+								this.findFrontmatterPropertyProject(
+									filePath,
+									method.propertyKey,
+								);
+							if (project) return project;
+							break;
+						}
 						case "metadata":
 							// Check if the specified metadata property exists
 							if (

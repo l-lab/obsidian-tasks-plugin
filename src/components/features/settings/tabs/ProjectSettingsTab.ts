@@ -503,9 +503,14 @@ export function renderProjectSettingsTab(
 						.addOption("metadata", t("Metadata field"))
 						.addOption("tag", t("Tag pattern"))
 						.addOption("link", t("Link target"))
+						.addOption("frontmatterProperty", t("Frontmatter property"))
 						.setValue(method.type)
 						.onChange(async (value) => {
-							method.type = value as "metadata" | "tag" | "link";
+							method.type = value as
+								| "metadata"
+								| "tag"
+								| "link"
+								| "frontmatterProperty";
 							await settingTab.plugin.saveSettings();
 							refreshDetectionMethods();
 						});
@@ -517,7 +522,9 @@ export function renderProjectSettingsTab(
 							? t("Field name (e.g., project)")
 							: method.type === "tag"
 								? t("Tag prefix (e.g., project)")
-								: t("Link filter (e.g., Projects/)");
+								: method.type === "frontmatterProperty"
+									? t("Property=value (e.g., Class=Project)")
+									: t("Link filter (e.g., Projects/)");
 					text.setPlaceholder(placeholder)
 						.setValue(method.propertyKey)
 						.onChange(async (value) => {
@@ -541,6 +548,15 @@ export function renderProjectSettingsTab(
 							refreshDetectionMethods();
 						});
 				});
+
+			if (method.type === "frontmatterProperty") {
+				methodDiv.createDiv({
+					cls: "setting-item-description",
+					text: t(
+						"A folder is a project when its folder note (Folder/Folder.md, or Folder.md next to the folder) has this property. The folder name becomes the project name, and every note inside the folder, including subfolders, belongs to it. The closest matching folder wins.",
+					),
+				});
+			}
 
 			// Show additional filter config for link type
 			if (method.type === "link") {
