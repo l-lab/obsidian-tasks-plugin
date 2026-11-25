@@ -41,7 +41,7 @@ For detailed feature documentation, visit [taskgenius.md](https://taskgenius.md)
 
 ### Manual Installation
 1. Download the latest release from [GitHub Releases](https://github.com/Quorafind/Obsidian-Task-Genius/releases)
-2. Extract files to `.obsidian/plugins/obsidian-task-progress-bar/`
+2. Extract files to `.obsidian/plugins/l-lab-projects-tasks/`
 3. Enable the plugin in Obsidian settings
 
 ---
