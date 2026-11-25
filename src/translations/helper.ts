@@ -8,7 +8,7 @@ const REMOTE_BASE_URL =
 
 function getPluginInstance() {
 	return (window as any).app?.plugins?.plugins?.[
-		"obsidian-task-progress-bar"
+		"l-lab-projects-tasks"
 	];
 }
 
