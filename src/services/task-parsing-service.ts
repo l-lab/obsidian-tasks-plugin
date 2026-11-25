@@ -51,7 +51,7 @@ export interface TaskParsingServiceOptions {
 		metadataConfigEnabled?: boolean;
 		configFileEnabled?: boolean;
 		detectionMethods?: Array<{
-			type: "metadata" | "tag" | "link";
+			type: "metadata" | "tag" | "link" | "frontmatterProperty";
 			propertyKey: string;
 			linkFilter?: string;
 			enabled: boolean;

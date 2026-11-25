@@ -592,10 +592,13 @@ export interface FileMetadataInheritanceConfig {
 /** Project detection method configuration */
 export interface ProjectDetectionMethod {
 	/** Type of detection method */
-	type: "metadata" | "tag" | "link";
+	type: "metadata" | "tag" | "link" | "frontmatterProperty";
 	/** For metadata: the property key (e.g., "project")
 	 *  For tag: the tag name (e.g., "project")
-	 *  For link: the property key that contains links (e.g., "kind", "category") */
+	 *  For link: the property key that contains links (e.g., "kind", "category")
+	 *  For frontmatterProperty: "key=value" matched against a folder note's frontmatter
+	 *  (e.g., "Class=Project"). Any folder whose folder note matches is a
+	 *  project named after the folder; every note inside it inherits it. */
 	propertyKey: string;
 	/** For link type: optional filter for link values (e.g., only links containing "Project") */
 	linkFilter?: string;
